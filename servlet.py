@@ -22,7 +22,7 @@ from urllib.parse import urlparse, urlunsplit
 import heapq
 from tornado.locks import Semaphore
 import html
-from contextlib import contextmanager
+from hashlib import sha1
 import tornado
 import tornado.web
 import tornado.httpserver
@@ -704,6 +704,10 @@ class TranslatePageHandler(TranslateHandler):
             pipeline = self.getPipeline(pair)
             http_client = httpclient.AsyncHTTPClient()
             url = self.get_argument('url')
+            mode_path = self.pairs['%s-%s' % pair]
+            markUnknown = self.get_argument('markUnknown', default='yes') in ['yes', 'true', '1']
+            cached = self.getCached(pair, url)
+            got304 = False
             request = httpclient.HTTPRequest(url=url,
                                              # TODO: tweak
                                              connect_timeout=20.0,
@@ -712,7 +716,7 @@ class TranslatePageHandler(TranslateHandler):
                 response = yield http_client.fetch(request)
             except:
                 logging.info('Not working! Bad SSL!!!')
-                self.send_error(404, explanation="{} on fetching url: {}".format('2000', 'SSL Certificate cannot be verified'))
+                self.send_error(404, explanation="{} on fetching url: {}".format('404', 'SSL Certificate cannot be verified'))
                 return
             toTranslate = self.htmlToText(response.body, url)
 
